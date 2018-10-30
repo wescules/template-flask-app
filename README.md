@@ -15,3 +15,8 @@
  2. (set password to 'root')
  3. create database myflaskapp;
  4. mysql -u root -proot myflaskapp < admin_backup.sql
+
+# Running the app
+```
+python app.py
+```
