@@ -29,26 +29,37 @@ def index():
 def about():
     return render_template('about.html')
 
-
 # Articles
 @app.route('/articles')
 def articles():
-    # Create cursor
+    # Create cursors
     cur = mysql.connection.cursor()
 
     # Get articles
-    result = cur.execute("SELECT * FROM articles")
+    if(session['privilege'] == 1):
+        result = cur.execute("select * from articles")
+        
+        articles = cur.fetchall()
 
-    articles = cur.fetchall()
+        if result > 0:
+            return render_template('articles.html', articles=articles)
+        else:
+            msg = 'No Articles Found'
+            return render_template('articles    .html', msg=msg)
 
-    if result > 0:
-        return render_template('articles.html', articles=articles)
     else:
-        msg = 'No Articles Found'
-        return render_template('articles.html', msg=msg)
+        result = cur.execute("select id, title, articleid, priv from admin_articles left join articles on (id=articleid and userid=%s) or priv=0 group by id;", str(session['userid1']))
+
+        articles = cur.fetchall()
+
+        if result > 0:
+            return render_template('articles.html', articles=articles)
+        else:
+            msg = 'No Articles Found'
+            return render_template('articles.html', msg=msg)
+
     # Close connection
     cur.close()
-
 
 #Single Article
 @app.route('/article/<string:id>/')
@@ -85,12 +96,13 @@ def register():
         email = form.email.data
         username = form.username.data
         password = sha256_crypt.encrypt(str(form.password.data))
-
+        privelege = request.form.get('priv')
+        
         # Create cursor
         cur = mysql.connection.cursor()
 
         # Execute query
-        cur.execute("INSERT INTO users(name, email, username, password) VALUES(%s, %s, %s, %s)", (name, email, username, password))
+        cur.execute("INSERT INTO users(name, email, username, password, privilege) VALUES(%s, %s, %s, %s, %s)", (name, email, username, password, int(privelege)))
 
         # Commit to DB
         mysql.connection.commit()
@@ -129,6 +141,7 @@ def login():
                 session['logged_in'] = True
                 session['username'] = username
                 session['privilege'] = data['privilege']
+                session['userid1'] = data['id']
 
                 flash('You are now logged in', 'success')
                 return redirect(url_for('dashboard'))
@@ -162,25 +175,41 @@ def logout():
     flash('You are now logged out', 'success')
     return redirect(url_for('login'))
 
+
+
 # Dashboard
 @app.route('/dashboard')
 @is_logged_in
 def dashboard():
-    # Create cursor
+    # Create cursors
     cur = mysql.connection.cursor()
 
     # Get articles
-    result = cur.execute("SELECT * FROM articles")
+    if(session['privilege'] == 1):
+        result = cur.execute("select * from articles")
+        
+        articles = cur.fetchall()
 
-    articles = cur.fetchall()
+        if result > 0:
+            return render_template('dashboard.html', articles=articles)
+        else:
+            msg = 'No Articles Found'
+            return render_template('dashboard.html', msg=msg)
 
-    if result > 0:
-        return render_template('dashboard.html', articles=articles)
     else:
-        msg = 'No Articles Found'
-        return render_template('dashboard.html', msg=msg)
+        result = cur.execute("select * from admin_articles left join articles on (id=articleid and userid=%s) or priv=0 group by id;", str(session['userid1']))
+        
+        articles = cur.fetchall()
+
+        if result > 0:
+            return render_template('dashboard.html', articles=articles)
+        else:
+            msg = 'No Articles Found'
+            return render_template('dashboard.html', msg=msg)
+
     # Close connection
     cur.close()
+
 
 # Article Form Class
 class ArticleForm(Form):
@@ -200,7 +229,7 @@ def add_article():
         cur = mysql.connection.cursor()
 
         # Execute
-        cur.execute("INSERT INTO articles(title, body, author) VALUES(%s, %s, %s)",(title, body, session['username']))
+        cur.execute("INSERT INTO articles(title, body, author, priv) VALUES(%s, %s, %s, %s)",(title, body, session['username'], 0))
 
         # Commit to DB
         mysql.connection.commit()
@@ -213,6 +242,34 @@ def add_article():
         return redirect(url_for('dashboard'))
 
     return render_template('add_article.html', form=form)
+
+
+# Add Admin Article
+@app.route('/add_admin_article', methods=['GET', 'POST'])
+@is_logged_in
+def add_admin_article():
+    form = ArticleForm(request.form)
+    if request.method == 'POST' and form.validate():
+        title = form.title.data
+        body = form.body.data
+
+        # Create Cursor
+        cur = mysql.connection.cursor()
+
+        # Execute
+        cur.execute("INSERT INTO articles(title, body, author, priv) VALUES(%s, %s, %s, %s)",(title, body, session['username'], 1))
+
+        # Commit to DB
+        mysql.connection.commit()
+
+        #Close connection
+        cur.close()
+
+        flash('Article Created', 'success')
+
+        return redirect(url_for('dashboard'))
+
+    return render_template('add_admin_article.html', form=form)
 
 
 # Edit Article
@@ -275,6 +332,67 @@ def delete_article(id):
 
     return redirect(url_for('dashboard'))
 
+# Share Article
+@app.route('/share_article/<string:id>', methods=['POST'])
+@is_logged_in
+def share_article(id):
+    # Create cursor
+    cur = mysql.connection.cursor()
+
+    usersEmail = request.form['userEmail']
+    # Execute
+    result = cur.execute("SELECT * FROM admin_articles, users where email = '%s' and admin_articles.userid = users.id" % usersEmail)
+
+    if(result >= 1):
+        cur.execute("delete from admin_articles where userid in (select id from users where email = '%s')" % usersEmail)
+        flash('Article is Unshared', 'success')
+    else:
+        cur.execute("INSERT INTO admin_articles(articleid, userid) SELECT %s, id FROM users where email = '%s'" % (id, usersEmail))
+        flash('Article is Shared', 'success')
+    # Commit to DB
+    mysql.connection.commit()
+
+    #Close connection
+    cur.close()
+
+    return redirect(url_for('dashboard'))
+
+# Unshare Article
+@app.route('/share_article/<string:id>', methods=['POST'])
+@is_logged_in
+def unshare_article(id):
+    # Create cursor
+    cur = mysql.connection.cursor()
+
+    usersEmail = request.form['userEmail']
+    # Execute
+    cur.execute("delete from admin_articles where userid in (select id from users where email = %s)", usersEmail)
+
+
+    # Commit to DB
+    mysql.connection.commit()
+
+    #Close connection
+    cur.close()
+
+    flash('Article is shared', 'success')
+
+    return redirect(url_for('dashboard'))
+
+
 if __name__ == '__main__':
     app.secret_key='secret123'
     app.run(debug=True)
+    
+#sudo apt-get install mysql-server
+#apt-get install python-dev
+#sudo apt-get install libmysqlclient-dev
+#pip install flask_mysqldb
+#pip install wtforms
+#pip install passlib
+
+###################
+#***create database***(set password to 'root')
+# mysql -u root -p
+# create database myflaskapp;
+# mysql -u root -proot myflaskapp < admin_backup.sql
