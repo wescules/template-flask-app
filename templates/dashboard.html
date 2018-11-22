@@ -1,10 +1,14 @@
 {% extends 'layout.html' %}
 
 {% block body %}
-  <h1>Dashboard <small> Welcome {{session.username}}</small></h1>
-  <a class="btn btn-success" href="/add_article"> Add Article</a>
-  <hr>
-  <table class="table table-striped">
+<!-- if user is  an admin -->
+    {% if session.privilege == 1 %}
+    <h1>ADMIN Dashboard <small> Welcome, {{session.username}}</small></h1>
+    <a class="btn btn-success" href="/add_article"> Add Global Article</a>
+    <a class="btn btn-success" href="/add_admin_article"> Add Admin Article</a>
+    <hr>
+    <p><strong>THIS IS AN ADMIN ACCOUNT</strong></p>
+    <table class="table table-striped">
     <tr>
       <th>ID</th>
       <th>Title</th>
@@ -13,10 +17,6 @@
       <th></th>
       <th></th>
     </tr>
-
-    {% if session.privilege == 1 %}
-    <p>lmaoooooooooooooooooooooooooooooooooooooooooooo</p>
-    {% endif %}
     {% for article in articles %}
       <tr>
         <td>{{article.id}}</td>
@@ -30,7 +30,37 @@
             <input type="submit" value="Delete" class="btn btn-danger">
           </form>
         </td>
+        <td>
+          <form action="{{ url_for('share_article', id=article.id) }}" method="post">
+            <input type="text" name="userEmail" placeholder="Enter Email to share">
+            <input type="submit">
+        </form>
+        </td>
       </tr>
     {% endfor %}
-  </table>
+    </table>
+<!-- if user is NOT an admin -->
+    {% else %}
+      <h1>Dashboard <small> Welcome, {{session.username}}</small></h1>
+  <br></br>
+<table class="table table-striped">
+    <tr>
+      <th>ID</th>
+      <th>Title</th>
+      <th>Author</th>
+      <th>Date</th>
+      <th></th>
+      <th></th>
+    </tr>
+    {% for article in articles %}
+      <tr>
+        <td>{{article.id}}</td>
+        <td>{{article.title}}</td>
+        <td>{{article.author}}</td>
+        <td>{{article.create_date}}</td>
+        <td><a href="edit_article/{{article.id}}" class="btn btn-default pull-right">View</a></td>
+      </tr>
+    {% endfor %}
+</table>
+    {% endif %}
 {% endblock %}

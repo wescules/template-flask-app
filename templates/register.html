@@ -19,6 +19,11 @@
     <div class="form-group">
       {{render_field(form.confirm, class_="form-control")}}
     </div>
+    <select class="form-control" id="priv" name="priv">
+      <option value=1 >Admin</option>
+      <option value=0 selected>Client</option>
+    </select>
+    <br></br>
     <p><input type="submit" class="btn btn-primary" value="Submit"></p>
   </form>
 {% endblock %}
