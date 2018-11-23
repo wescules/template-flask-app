@@ -197,7 +197,7 @@ def dashboard():
             return render_template('dashboard.html', msg=msg)
 
     else:
-        result = cur.execute("select * from admin_articles left join articles on (id=articleid and userid=%s) or priv=0 group by id;", str(session['userid1']))
+        result = cur.execute("select id, title, articleid, priv from admin_articles left join articles on (id=articleid and userid=%s) or priv=0 group by id" % str(session['userid1']))
         
         articles = cur.fetchall()
 
