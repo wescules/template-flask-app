@@ -155,6 +155,10 @@ def quotes():
     due = 0
     if request.method == 'POST':
         gallonsrequested = request.form['gallons_requested']
+        if not gallonsrequested.isdigit():
+            flash('Gallons Requested needs to be a numeric value', 'danger')
+            return render_template('fuelquoteform.html', form=form, article=article, suggestedprice=suggestedprice, due=due)
+
         dt = request.form['dt']
         date = datetime.datetime.strptime(dt, '%m/%d/%Y').strftime('%Y/%m/%d')
         suggestedprice = 5
