@@ -1,0 +1,38 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+  <h1>Fuel Quote Form</h1>
+  {% from "includes/_formhelpers.html" import render_field %}
+  <form method="POST" action="">
+    <div class="form-group">
+      {{ render_field(form.gallons_requested, class_="form-control") }}
+    </div>
+    <div>
+      <strong>
+          Delivery Address: 
+      </strong>
+      {{ article.address1 }}
+      <br></br>
+    </div>
+    <div class="input-field col s6">
+      <strong>
+          Delivery Date:
+      </strong>
+        {{ form.dt(class="dtpick") }}
+      </div>
+      <br></br>
+    <div class="form-group">
+        <strong>
+            Suggested Price: 
+        </strong>
+          {{ suggestedprice }}
+    </div>
+    <div class="form-group">
+        <strong>
+            Total Amount Due: 
+        </strong>
+        {{ due }}
+      </div>
+    <p><input class="btn btn-primary" type="submit" value="Submit">
+  </form>
+{% endblock %}
