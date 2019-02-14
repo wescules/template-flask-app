@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 5.5.62, for debian-linux-gnu (x86_64)
+-- MySQL dump 10.13  Distrib 5.7.25, for Linux (x86_64)
 --
 -- Host: localhost    Database: myflaskapp
 -- ------------------------------------------------------
--- Server version	5.5.62-0ubuntu0.14.04.1
+-- Server version	5.7.25-0ubuntu0.18.04.2
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -14,29 +14,6 @@
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-
---
--- Table structure for table `admin_articles`
---
-
-DROP TABLE IF EXISTS `admin_articles`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `admin_articles` (
-  `articleid` int(11) DEFAULT NULL,
-  `userid` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `admin_articles`
---
-
-LOCK TABLES `admin_articles` WRITE;
-/*!40000 ALTER TABLE `admin_articles` DISABLE KEYS */;
-INSERT INTO `admin_articles` VALUES (13,12),(13,2),(15,12),(17,13),(17,7);
-/*!40000 ALTER TABLE `admin_articles` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `articles`
@@ -67,6 +44,33 @@ INSERT INTO `articles` VALUES (13,'Global link 1','wescules','lmao lmao lmao lma
 UNLOCK TABLES;
 
 --
+-- Table structure for table `fuelquote`
+--
+
+DROP TABLE IF EXISTS `fuelquote`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `fuelquote` (
+  `fuelid` int(11) NOT NULL AUTO_INCREMENT,
+  `userid` int(11) NOT NULL,
+  `gallonsrequested` int(11) DEFAULT NULL,
+  `suggestedprice` int(11) DEFAULT NULL,
+  `amountdue` bigint(20) DEFAULT NULL,
+  `date` date DEFAULT NULL,
+  PRIMARY KEY (`fuelid`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `fuelquote`
+--
+
+LOCK TABLES `fuelquote` WRITE;
+/*!40000 ALTER TABLE `fuelquote` DISABLE KEYS */;
+/*!40000 ALTER TABLE `fuelquote` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `users`
 --
 
@@ -75,14 +79,18 @@ DROP TABLE IF EXISTS `users`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) DEFAULT NULL,
-  `email` varchar(100) DEFAULT NULL,
-  `username` varchar(30) DEFAULT NULL,
-  `password` varchar(100) DEFAULT NULL,
+  `fullname` varchar(50) DEFAULT NULL,
+  `address1` varchar(100) DEFAULT NULL,
+  `address2` varchar(100) DEFAULT NULL,
+  `city` varchar(100) DEFAULT NULL,
+  `state` varchar(2) DEFAULT NULL,
+  `zipcode` varchar(9) DEFAULT NULL,
+  `ratehistory` varchar(100) DEFAULT NULL,
+  `username` varchar(30) NOT NULL,
+  `password` varchar(100) NOT NULL,
   `register_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `privilege` int(10) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -91,7 +99,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'Wesley Andrade','wafermonster@yahoo.com','wescules','$5$rounds=535000$K1i1RTO3V7id9pNE$9nFdojQ6gCfH0XawTglU3.W.NJ.D2u0OZ1YbYKY3pB/','2018-10-24 00:12:44',1),(2,'Hiep Ly','hiepfrsibtghuhytrgaheghiuptreshggiup','fag1234','$5$rounds=535000$hBJFJ0FaC0NMu25u$KhY1WPpuTc0xQh5QDvAhmm0cn0WOfNmWRVZivbM2unD','2018-10-24 00:20:34',0),(3,'s Andrade','johnanifa@hotmail.com','egragsergsretg','$5$rounds=535000$suSAhD52.iYDXYPE$a5I0ZtQ6CIg9iCw.p//9iLqhmtUgDK/CGykz4WJtCGB','2018-10-24 00:27:16',1),(4,'John','wafermonster@yahoo.com','lmaoxd','$5$rounds=535000$nsLd.V3ZnWnh79nQ$N65fnxtIFuHRrPX7mWIr7OfIsktd6Celt94VcfVeHMD','2018-10-24 00:55:42',1),(5,'rgtegeargaergaer','aergaergaergaergaerg','argegaergaerg','$5$rounds=535000$/0L46oE0dF/T/mfR$wWjDd1A2/gmaVHOybnhycfz9T6MY.WL5xKyYLnAnti5','2018-10-24 00:56:18',NULL),(6,'n','mnmmmmmmmmmmmm','mmmmmmmmmmmmmm','$5$rounds=535000$LeEl0NvlCM41nuzG$w6PvdXJnDdFDrLmUC.maXVrtIatjVCPB69PRR1joan1','2018-11-02 06:34:08',NULL),(7,'ocean man','ocean man','ocean man','$5$rounds=535000$elsTL.0aoC8mu74b$wR0aYGrsK2YsseeV8/Derjqxd1oAUwoauUr7LGNny17','2018-11-02 06:34:46',NULL),(8,'henry','johnanifa@hotmail.com','henry','$5$rounds=535000$R52F20ajMTfi.jj2$tIm25d8Q4urGFuhVcWvlv1Qymdz47ps1Y1gMgNFYRs6','2018-11-22 08:29:12',NULL),(9,'Wesley Andrade','wafermonster@yahoo.comc','sssssssssss','$5$rounds=535000$bR.0f1EeF2PIZaQ2$ANugHHDfEJ5t740cv057ZE68oinzkwU/oiT7dqkUYN8','2018-11-22 09:25:33',0),(12,'qwertyuiop','qwertyuiop','qwertyuiop','$5$rounds=535000$G7/EQ.EY7A/QOl02$o11HgqlqUVkJw9uLRgssWBUBj6sRPT2oz0KwG7/zHn0','2018-11-22 11:26:32',0),(13,'Hannibal Buress','Hannibal Buress','Hannibal Buress','$5$rounds=535000$yK0lD3JNA8c5F36a$RQSKy7qFnTzPb10DLlasiwhn0rO739NVwOx0/SmkNL2','2018-11-22 15:58:16',0),(14,'Hannibal BuressHannibal Buress','Hannibal BuressHannibal Buress','Hannibal Buressss','$5$rounds=535000$B1reapGS63v875Hs$ATAM3OW1PwwhlipLJ26sSUj3m/DGXrTaq41yThbV6L2','2018-11-23 02:44:08',1),(15,'register','register','register','$5$rounds=535000$IGRUo.j9dBpi6SSP$BKR.hBMSmKDGp9wrqZoNoK0EesRsqJIXrnItOkK0al4','2018-11-24 04:33:13',0);
+INSERT INTO `users` VALUES (19,'Wesley Andrade','lma oxdxdxdx','tirugrtiegsrtg','Sugar Land','AL','3242323',NULL,'lmao','$5$rounds=535000$8JiBxLONuz2uejnl$0H6Uxn5pd5PWX4JrJmUl9jUmR3s25Fi0VSaguBDY9W3','2019-02-14 05:07:11'),(20,'awefawef','awefawefaw','','awefwefawef','TX','12343124',NULL,'1111','$5$rounds=535000$8NlBVOIXzMVt7GUK$medDmDVbo9CGieF.46Bvjn0MHISZBqF5eKz6QeV0c57','2019-02-14 06:07:07'),(21,'Wesley Andrade','1234 Street St.','','Katy','TX','77500',NULL,'wesley','$5$rounds=535000$e2c1QKz4n7diRlgZ$/8DK35.5YCeKBGYa8b2.0AaQSHF38FWy2hWi0G2jrS0','2019-02-14 18:03:50');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -104,4 +112,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2018-11-24  2:22:52
+-- Dump completed on 2019-02-14 12:20:27

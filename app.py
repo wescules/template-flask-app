@@ -1,9 +1,10 @@
 from flask import Flask, render_template, flash, redirect, url_for, session, request, logging
-#from data import Articles
+from flask_wtf import Form, FlaskForm
 from flask_mysqldb import MySQL
-from wtforms import Form, StringField, TextAreaField, PasswordField, validators
+from wtforms import Form, StringField, TextAreaField, PasswordField, validators, DateField, IntegerField
 from passlib.hash import sha256_crypt
 from functools import wraps
+import datetime
 
 app = Flask(__name__)
 
@@ -29,57 +30,10 @@ def index():
 def about():
     return render_template('about.html')
 
-# Articles
-@app.route('/articles')
-def articles():
-    # Create cursors
-    cur = mysql.connection.cursor()
-
-    # Get articles
-    if(session['privilege'] == 1):
-        result = cur.execute("select * from articles")
-        
-        articles = cur.fetchall()
-
-        if result > 0:
-            return render_template('articles.html', articles=articles)
-        else:
-            msg = 'No Articles Found'
-            return render_template('articles    .html', msg=msg)
-
-    else:
-        result = cur.execute("select id, title, articleid, priv from admin_articles left join articles on (id=articleid and userid=%s) or priv=0 group by id;", str(session['userid1']))
-
-        articles = cur.fetchall()
-
-        if result > 0:
-            return render_template('articles.html', articles=articles)
-        else:
-            msg = 'No Articles Found'
-            return render_template('articles.html', msg=msg)
-
-    # Close connection
-    cur.close()
-
-#Single Article
-@app.route('/article/<string:id>/')
-def article(id):
-    # Create cursor
-    cur = mysql.connection.cursor()
-
-    # Get article
-    result = cur.execute("SELECT * FROM articles WHERE id = %s", [id])
-
-    article = cur.fetchone()
-
-    return render_template('article.html', article=article)
-
 
 # Register Form Class
 class RegisterForm(Form):
-    name = StringField('Name', [validators.Length(min=1, max=50)])
     username = StringField('Username', [validators.Length(min=4, max=25)])
-    email = StringField('Email', [validators.Length(min=6, max=50)])
     password = PasswordField('Password', [
         validators.DataRequired(),
         validators.EqualTo('confirm', message='Passwords do not match')
@@ -92,17 +46,20 @@ class RegisterForm(Form):
 def register():
     form = RegisterForm(request.form)
     if request.method == 'POST' and form.validate():
-        name = form.name.data
-        email = form.email.data
         username = form.username.data
         password = sha256_crypt.encrypt(str(form.password.data))
-        privelege = request.form.get('priv')
-        
+
         # Create cursor
         cur = mysql.connection.cursor()
 
+        # Get user by username
+        result = cur.execute("SELECT * FROM users WHERE username = %s", [username])
+
+        if result > 0:
+            flash('Username is already in use', 'danger')
+            return redirect(url_for('register'))
         # Execute query
-        cur.execute("INSERT INTO users(name, email, username, password, privilege) VALUES(%s, %s, %s, %s, %s)", (name, email, username, password, int(privelege)))
+        cur.execute("INSERT INTO users(username, password) VALUES(%s, %s)", (username, password))
 
         # Commit to DB
         mysql.connection.commit()
@@ -140,11 +97,10 @@ def login():
                 # Passed
                 session['logged_in'] = True
                 session['username'] = username
-                session['privilege'] = data['privilege']
                 session['userid1'] = data['id']
 
                 flash('You are now logged in', 'success')
-                return redirect(url_for('dashboard'))
+                return redirect(url_for('about'))
             else:
                 error = 'Invalid login'
                 return render_template('login.html', error=error)
@@ -177,110 +133,71 @@ def logout():
 
 
 
-# Dashboard
-@app.route('/dashboard')
+class FuelForm(Form):
+    gallons_requested = IntegerField('Gallons Requested: ', [validators.NumberRange(min=1, max=10000), validators.Required()])
+    dt = DateField('Delivery Date',[validators.Required()], format="%m/%d/%Y")
+
+# Fuel quotes
+@app.route('/quotes', methods=['GET', 'POST'])
 @is_logged_in
-def dashboard():
-    # Create cursors
-    cur = mysql.connection.cursor()
+def quotes():
+    form = FuelForm(request.form)
 
-    # Get articles
-    if(session['privilege'] == 1):
-        result = cur.execute("select * from articles")
-        
-        articles = cur.fetchall()
-
-        if result > 0:
-            return render_template('dashboard.html', articles=articles)
-        else:
-            msg = 'No Articles Found'
-            return render_template('dashboard.html', msg=msg)
-
-    else:
-        result = cur.execute("select id, title, articleid, priv from admin_articles left join articles on (id=articleid and userid=%s) or priv=0 group by id" % str(session['userid1']))
-        
-        articles = cur.fetchall()
-
-        if result > 0:
-            return render_template('dashboard.html', articles=articles)
-        else:
-            msg = 'No Articles Found'
-            return render_template('dashboard.html', msg=msg)
-
-    # Close connection
-    cur.close()
-
-
-# Article Form Class
-class ArticleForm(Form):
-    title = StringField('Title', [validators.Length(min=1, max=200)])
-    body = TextAreaField('Body', [validators.Length(min=30)])
-
-# Add Article
-@app.route('/add_article', methods=['GET', 'POST'])
-@is_logged_in
-def add_article():
-    form = ArticleForm(request.form)
-    if request.method == 'POST' and form.validate():
-        title = form.title.data
-        body = form.body.data
-
-        # Create Cursor
-        cur = mysql.connection.cursor()
-
-        # Execute
-        cur.execute("INSERT INTO articles(title, body, author, priv) VALUES(%s, %s, %s, %s)",(title, body, session['username'], 0))
-
-        # Commit to DB
-        mysql.connection.commit()
-
-        #Close connection
-        cur.close()
-
-        flash('Article Created', 'success')
-
-        return redirect(url_for('dashboard'))
-
-    return render_template('add_article.html', form=form)
-
-
-# Add Admin Article
-@app.route('/add_admin_article', methods=['GET', 'POST'])
-@is_logged_in
-def add_admin_article():
-    form = ArticleForm(request.form)
-    if request.method == 'POST' and form.validate():
-        title = form.title.data
-        body = form.body.data
-
-        # Create Cursor
-        cur = mysql.connection.cursor()
-
-        # Execute
-        cur.execute("INSERT INTO articles(title, body, author, priv) VALUES(%s, %s, %s, %s)",(title, body, session['username'], 1))
-
-        # Commit to DB
-        mysql.connection.commit()
-
-        #Close connection
-        cur.close()
-
-        flash('Article Created', 'success')
-
-        return redirect(url_for('dashboard'))
-
-    return render_template('add_admin_article.html', form=form)
-
-
-# Edit Article
-@app.route('/edit_article/<string:id>', methods=['GET', 'POST'])
-@is_logged_in
-def edit_article(id):
     # Create cursor
     cur = mysql.connection.cursor()
 
     # Get article by id
-    result = cur.execute("SELECT * FROM articles WHERE id = %s", [id])
+    result = cur.execute("SELECT * FROM users WHERE id = %s" % str(session['userid1']))
+
+    article = cur.fetchone()
+    cur.close()
+    suggestedprice = 0
+    due = 0
+    if request.method == 'POST':
+        gallonsrequested = request.form['gallons_requested']
+        dt = request.form['dt']
+        date = datetime.datetime.strptime(dt, '%m/%d/%Y').strftime('%Y/%m/%d')
+        suggestedprice = 5
+        due = suggestedprice * int(gallonsrequested)
+        # Create Cursor
+        cur = mysql.connection.cursor()
+
+        cur.execute ("insert into fuelquote(userid, gallonsrequested, suggestedprice, amountdue, date) values(%s, %s, %s, %s, %s);",(str(session['userid1']), gallonsrequested, suggestedprice, due, date))
+
+        # Commit to DB
+        mysql.connection.commit()
+
+        #Close connection
+        cur.close()
+
+        return render_template('fuelquoteform.html', form=form, article=article, suggestedprice=suggestedprice, due=due) 
+
+
+    return render_template('fuelquoteform.html', form=form, article=article, suggestedprice=suggestedprice, due=due) 
+
+
+# Article Form Class
+class ArticleForm(Form):
+    fullname = StringField('Full Name', [validators.Required()])
+    address1 = StringField('Address 1', [validators.Required()])
+    address2 = StringField('Address 2', [validators.Length(min=0, max=100)])
+    city = StringField('City', [validators.Required()])
+    zipcode = StringField('Zip Code', [validators.Required()])
+
+
+
+def LengthError(string, minimum, maximum):
+    return len(string) < minimum or len(string) > maximum
+
+# Edit Article
+@app.route('/profile', methods=['GET', 'POST'])
+@is_logged_in
+def profileManager():
+    # Create cursor
+    cur = mysql.connection.cursor()
+
+    # Get article by id
+    result = cur.execute("SELECT * FROM users WHERE id = %s" % str(session['userid1']))
 
     article = cur.fetchone()
     cur.close()
@@ -288,111 +205,52 @@ def edit_article(id):
     form = ArticleForm(request.form)
 
     # Populate article form fields
-    form.title.data = article['title']
-    form.body.data = article['body']
-
-    if request.method == 'POST' and form.validate():
-        title = request.form['title']
-        body = request.form['body']
+    form.fullname.data = article['fullname']
+    form.address1.data = article['address1']
+    form.address2.data = article['address2']
+    form.city.data = article['city']
+    form.zipcode.data = article['zipcode']
+    #state = article['state']
+    # Validate profile form and update 
+    if request.method == 'POST':
+        fname = request.form['fullname']
+        if LengthError(fname, 1, 50):
+            flash('Full Name needs to be between 1 and 50 characters', 'danger')
+            return render_template('profilemanager.html', form=form)
+        add1 = request.form['address1']
+        if LengthError(add1, 1, 100):
+            flash('Address 1 needs to be between 1 and 100 characters', 'danger')
+            return render_template('profilemanager.html', form=form)
+        add2 = request.form['address2']
+        cty = request.form['city']
+        if LengthError(cty, 1, 100):
+            flash('City needs to be between 1 and 100 characters', 'danger')
+            return render_template('profilemanager.html', form=form)
+        st = request.form.get('state')
+        zp = request.form['zipcode']
+        if LengthError(zp, 5, 9):
+            flash('Zip Code needs to be between 5 and 9 characters', 'danger')
+            return render_template('profilemanager.html', form=form, article=article)
 
         # Create Cursor
         cur = mysql.connection.cursor()
-        app.logger.info(title)
-        # Execute
-        cur.execute ("UPDATE articles SET title=%s, body=%s WHERE id=%s",(title, body, id))
+
+        cur.execute ("UPDATE users SET fullname=%s, address1=%s, address2=%s, city=%s, state=%s, zipcode=%s WHERE id=%s",(fname, add1, add2,cty, st,zp,  str(session['userid1'])))
+
         # Commit to DB
         mysql.connection.commit()
 
         #Close connection
         cur.close()
 
-        flash('Article Updated', 'success')
+        flash('User Updated', 'success')
 
-        return redirect(url_for('dashboard'))
-
-    return render_template('edit_article.html', form=form)
-
-# Delete Article
-@app.route('/delete_article/<string:id>', methods=['POST'])
-@is_logged_in
-def delete_article(id):
-    # Create cursor
-    cur = mysql.connection.cursor()
-
-    # Execute
-    cur.execute("DELETE FROM articles WHERE id = %s", [id])
-
-    # Commit to DB
-    mysql.connection.commit()
-
-    #Close connection
-    cur.close()
-
-    flash('Article Deleted', 'success')
-
-    return redirect(url_for('dashboard'))
-
-# Share Article
-@app.route('/share_article/<string:id>', methods=['POST'])
-@is_logged_in
-def share_article(id):
-    # Create cursor
-    cur = mysql.connection.cursor()
-
-    usersEmail = request.form['userEmail']
-    # Execute
-    result = cur.execute("SELECT * FROM admin_articles, users where email = '%s' and admin_articles.userid = users.id" % usersEmail)
-
-    if(result >= 1):
-        cur.execute("delete from admin_articles where userid in (select id from users where email = '%s')" % usersEmail)
-        flash('Article is Unshared', 'success')
-    else:
-        cur.execute("INSERT INTO admin_articles(articleid, userid) SELECT %s, id FROM users where email = '%s'" % (id, usersEmail))
-        flash('Article is Shared', 'success')
-    # Commit to DB
-    mysql.connection.commit()
-
-    #Close connection
-    cur.close()
-
-    return redirect(url_for('dashboard'))
-
-# Unshare Article
-@app.route('/share_article/<string:id>', methods=['POST'])
-@is_logged_in
-def unshare_article(id):
-    # Create cursor
-    cur = mysql.connection.cursor()
-
-    usersEmail = request.form['userEmail']
-    # Execute
-    cur.execute("delete from admin_articles where userid in (select id from users where email = %s)", usersEmail)
+        return redirect(url_for('profileManager'))
 
 
-    # Commit to DB
-    mysql.connection.commit()
-
-    #Close connection
-    cur.close()
-
-    flash('Article is shared', 'success')
-
-    return redirect(url_for('dashboard'))
+    return render_template('profilemanager.html', form=form, article=article)
 
 
 if __name__ == '__main__':
     app.secret_key='secret123'
     app.run(debug=True)
-    
-#sudo apt-get install mysql-server
-#apt-get install python-dev
-#sudo apt-get install libmysqlclient-dev
-#pip install flask_mysqldb
-#pip install wtforms
-#pip install passlib
-
-###################
-#***create database***(set password to 'root')
-# mysql -u root -p
-# create database myflaskapp;
-# mysql -u root -proot myflaskapp < admin_backup.sql
