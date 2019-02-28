@@ -132,6 +132,28 @@ def logout():
     return redirect(url_for('login'))
 
 
+# Quote History
+@app.route('/history', methods=['GET'])
+@is_logged_in
+def dashboard():
+    # Create cursors
+    cur = mysql.connection.cursor()
+
+    # Get quotes
+    result = cur.execute("select * from fuelquote where userid = %s" % str(session['userid1']))
+    
+    articles = cur.fetchall()
+
+    if result > 0:
+        return render_template('dashboard.html', articles=articles)
+    else:
+        msg = 'No Articles Found'
+        return render_template('dashboard.html', msg=msg)
+
+    # Close connection
+    cur.close()
+
+
 
 class FuelForm(Form):
     gallons_requested = IntegerField('Gallons Requested: ', [validators.NumberRange(min=1, max=10000), validators.Required()])

@@ -1,66 +1,25 @@
 {% extends 'layout.html' %}
 
 {% block body %}
-<!-- if user is  an admin -->
-    {% if session.privilege == 1 %}
-    <h1>ADMIN Dashboard <small> Welcome, {{session.username}}</small></h1>
-    <a class="btn btn-success" href="/add_article"> Add Global Article</a>
-    <a class="btn btn-success" href="/add_admin_article"> Add Admin Article</a>
-    <hr>
-    <p><strong>THIS IS AN ADMIN ACCOUNT</strong></p>
-    <table class="table table-striped">
-    <tr>
-      <th>ID</th>
-      <th>Title</th>
-      <th>Author</th>
-      <th>Date</th>
-      <th></th>
-      <th></th>
-    </tr>
-    {% for article in articles %}
-      <tr>
-        <td>{{article.id}}</td>
-        <td>{{article.title}}</td>
-        <td>{{article.author}}</td>
-        <td>{{article.create_date}}</td>
-        <td><a href="edit_article/{{article.id}}" class="btn btn-default pull-right">Edit</a></td>
-        <td>
-          <form action="{{url_for('delete_article', id=article.id)}}" method="post">
-            <input type="hidden" name="_method" value="DELETE">
-            <input type="submit" value="Delete" class="btn btn-danger">
-          </form>
-        </td>
-        <td>
-          <form action="{{ url_for('share_article', id=article.id) }}" method="post">
-            <input type="text" name="userEmail" placeholder="Enter Email to share">
-            <input type="submit">
-        </form>
-        </td>
-      </tr>
-    {% endfor %}
-    </table>
-<!-- if user is NOT an admin -->
-    {% else %}
-      <h1>Dashboard <small> Welcome, {{session.username}}</small></h1>
+<h1>Your Fuel Quote History:</h1>
   <br></br>
 <table class="table table-striped">
     <tr>
-      <th>ID</th>
-      <th>Title</th>
-      <th>Author</th>
+      <th>Gallons Requested</th>
+      <th>Suggested Price</th>
+      <th>Amount Due</th>
       <th>Date</th>
       <th></th>
       <th></th>
     </tr>
     {% for article in articles %}
       <tr>
-        <td>{{article.id}}</td>
-        <td>{{article.title}}</td>
-        <td>{{article.author}}</td>
-        <td>{{article.create_date}}</td>
+          <td>{{article.gallonsrequested}}</td>
+          <td>{{article.suggestedprice}}</td>
+          <td>{{article.amountdue}}</td>
+          <td>{{article.date}}</td>
         <td><a href="edit_article/{{article.id}}" class="btn btn-default pull-right">View</a></td>
       </tr>
     {% endfor %}
 </table>
-    {% endif %}
 {% endblock %}
