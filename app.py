@@ -153,7 +153,22 @@ def dashboard():
     # Close connection
     cur.close()
 
+ 
+@app.route('/deleteuser', methods=['GET'])
+def deleteUser():
+    cur = mysql.connection.cursor()
+    cur.execute("delete from users where username='hiepLy'")
+    mysql.connection.commit()
+    cur.close()
+    return redirect(url_for('register'))
 
+@app.route('/deletehistory', methods=['GET'])
+def deleteHistory():
+    cur = mysql.connection.cursor()
+    cur.execute("delete from fuelquote where gallonsrequested=1236")
+    mysql.connection.commit()
+    cur.close()
+    return redirect(url_for('quotes'))
 
 class FuelForm(Form):
     gallons_requested = IntegerField('Gallons Requested: ', [validators.NumberRange(min=1, max=10000), validators.Required()])
@@ -204,8 +219,8 @@ def quotes():
 
 # Article Form Class
 class ArticleForm(Form):
-    fullname = StringField('Full Name', [validators.Required()])
-    address1 = StringField('Address 1', [validators.Required()])
+    fullname = StringField('Full Name', [validators.Required(), validators.Length(min=1, max=50)])
+    address1 = StringField('Address 1', [validators.Required(), validators.Length(min=1, max=100)])
     address2 = StringField('Address 2', [validators.Length(min=0, max=100)])
     city = StringField('City', [validators.Required()])
     zipcode = StringField('Zip Code', [validators.Required()])
@@ -242,16 +257,16 @@ def profileManager():
         fname = request.form['fullname']
         if LengthError(fname, 1, 50):
             flash('Full Name needs to be between 1 and 50 characters', 'danger')
-            return render_template('profilemanager.html', form=form)
+            return render_template('profilemanager.html', form=form, article=article)
         add1 = request.form['address1']
         if LengthError(add1, 1, 100):
             flash('Address 1 needs to be between 1 and 100 characters', 'danger')
-            return render_template('profilemanager.html', form=form)
+            return render_template('profilemanager.html', form=form, article=article)
         add2 = request.form['address2']
         cty = request.form['city']
         if LengthError(cty, 1, 100):
             flash('City needs to be between 1 and 100 characters', 'danger')
-            return render_template('profilemanager.html', form=form)
+            return render_template('profilemanager.html', form=form, article=article)
         st = request.form.get('state')
         zp = request.form['zipcode']
         if LengthError(zp, 5, 9):
