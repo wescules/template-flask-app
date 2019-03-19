@@ -23,16 +23,49 @@
       <br></br>
     <div class="form-group">
         <strong>
-            Suggested Price: 
+          <p align="right">Price Per Gallon:
         </strong>
-          {{ suggestedprice }}
+        {{ PricePerGallon }} * {{ gallonsrequested }} = <font color="red">{{ ppgalon }}</font></p>
     </div>
     <div class="form-group">
         <strong>
-            Total Amount Due: 
+          <p align="right"> Profit Margin: 
         </strong>
-        {{ due }}
+           0.1 * {{ gallonsrequested }} = <font color="red">{{ profitMargin }}</font></p>
       </div>
+      <div class="form-group">
+        <strong>
+          <p align="right">Transportation: 
+        </strong>
+        {% if Transportation == 0.0 %}
+          0.9 * {{ gallonsrequested }}  = <font color="red">0</font>
+
+        {% else %}
+          0.9 * {{ gallonsrequested }}  = <font color="red">{{ Transportation }}</font>
+        {% endif %}
+      </p>
+      </div>
+      <div class="form-group">
+        <strong>
+          <p align="right">Client Discount (5 purchases or more only 1%-10%): 
+        </strong>
+        <font color="green">{{ clientratehistory }}</font>
+      </p>
+      </div>
+      <div class="form-group">
+        <strong>
+          <p align="right">Seasonal Discount: 
+        </strong>
+        <font color="green">{{ SeasonFluctuation }}</font>
+      </p>
+      </div>
+      <div class="form-group">
+        <strong>
+          <p align="right">Total Amount Due: 
+        </strong>
+          {{ FuelPrice }}
+      </p>
+    </div>
     <p><input class="btn btn-primary" type="submit" value="Submit">
   </form>
 {% endblock %}

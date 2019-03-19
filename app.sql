@@ -58,7 +58,7 @@ CREATE TABLE `fuelquote` (
   `amountdue` bigint(20) DEFAULT NULL,
   `date` date DEFAULT NULL,
   PRIMARY KEY (`fuelid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -67,6 +67,7 @@ CREATE TABLE `fuelquote` (
 
 LOCK TABLES `fuelquote` WRITE;
 /*!40000 ALTER TABLE `fuelquote` DISABLE KEYS */;
+INSERT INTO `fuelquote` VALUES (1,21,1232,5,6160,'2019-02-02'),(2,21,1232,5,6160,'2019-02-13'),(3,23,1234,5,6170,'2019-02-05'),(4,23,1234,5,6170,'2019-02-05'),(5,23,1234,5,6170,'2019-02-05'),(6,23,1234,5,6170,'2019-02-05'),(23,23,1212,5,6060,'2019-03-01'),(28,23,12312,5,61560,'2019-03-08'),(30,23,12312,5,61560,'2019-03-08'),(31,23,12312,5,61560,'2019-03-08');
 /*!40000 ALTER TABLE `fuelquote` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -90,7 +91,7 @@ CREATE TABLE `users` (
   `password` varchar(100) NOT NULL,
   `register_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=89 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -99,7 +100,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (19,'Wesley Andrade','lma oxdxdxdx','tirugrtiegsrtg','Sugar Land','AL','3242323',NULL,'lmao','$5$rounds=535000$8JiBxLONuz2uejnl$0H6Uxn5pd5PWX4JrJmUl9jUmR3s25Fi0VSaguBDY9W3','2019-02-14 05:07:11'),(20,'awefawef','awefawefaw','','awefwefawef','TX','12343124',NULL,'1111','$5$rounds=535000$8NlBVOIXzMVt7GUK$medDmDVbo9CGieF.46Bvjn0MHISZBqF5eKz6QeV0c57','2019-02-14 06:07:07'),(21,'Wesley Andrade','1234 Street St.','','Katy','TX','77500',NULL,'wesley','$5$rounds=535000$e2c1QKz4n7diRlgZ$/8DK35.5YCeKBGYa8b2.0AaQSHF38FWy2hWi0G2jrS0','2019-02-14 18:03:50');
+INSERT INTO `users` VALUES (23,'Wescules Andraddy','124 Streeet St.','','Sugar Land','TX','908243',NULL,'lmao','$5$rounds=535000$RB5y7qa99/hfIkW4$94aKA8M2jur8BkKucwazYCEFwyxN2xcRPC7S33Re9Y1','2019-03-18 04:28:07'),(88,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'hiepLy','$5$rounds=535000$WrSgGyOO9NvUS0oQ$B0CmRRyOPqTJg3vMzWqVK8hmiwBtCSlgZefZvzmLgo5','2019-03-18 15:36:00');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -112,4 +113,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2019-02-14 12:20:27
+-- Dump completed on 2019-03-18 11:29:58

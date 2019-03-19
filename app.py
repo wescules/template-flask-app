@@ -17,7 +17,6 @@ app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 # init MYSQL
 mysql = MySQL(app)
 
-#Articles = Articles()
 
 # Index
 @app.route('/')
@@ -188,22 +187,28 @@ def quotes():
 
     article = cur.fetchone()
     cur.close()
-    suggestedprice = 0
-    due = 0
+    PricePerGallon=0
+    Transportation=0
+    clientratehistory=0
+    SeasonFluctuation=0
+    profitMargin=0
+    FuelPrice=0
+    gallonsrequested=0
+    ppgalon =0
     if request.method == 'POST':
         gallonsrequested = request.form['gallons_requested']
         if not gallonsrequested.isdigit():
             flash('Gallons Requested needs to be a numeric value', 'danger')
-            return render_template('fuelquoteform.html', form=form, article=article, suggestedprice=suggestedprice, due=due)
+            return render_template('fuelquoteform.html', form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon) 
 
         dt = request.form['dt']
         date = datetime.datetime.strptime(dt, '%m/%d/%Y').strftime('%Y/%m/%d')
-        suggestedprice = 5
-        due = suggestedprice * int(gallonsrequested)
+        FuelPrice, PricePerGallon, Transportation, clientratehistory, SeasonFluctuation, profitMargin = pricingModule(gallonsrequested, dt)
+        ppgalon = float(gallonsrequested) * float(PricePerGallon)
         # Create Cursor
         cur = mysql.connection.cursor()
 
-        cur.execute ("insert into fuelquote(userid, gallonsrequested, suggestedprice, amountdue, date) values(%s, %s, %s, %s, %s);",(str(session['userid1']), gallonsrequested, suggestedprice, due, date))
+        cur.execute ("insert into fuelquote(userid, gallonsrequested, suggestedprice, amountdue, date) values(%s, %s, %s, %s, %s);",(str(session['userid1']), gallonsrequested, PricePerGallon, FuelPrice, date))
 
         # Commit to DB
         mysql.connection.commit()
@@ -211,19 +216,64 @@ def quotes():
         #Close connection
         cur.close()
 
-        return render_template('fuelquoteform.html', form=form, article=article, suggestedprice=suggestedprice, due=due) 
+        return render_template('fuelquoteform.html', form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon) 
+
+    return render_template('fuelquoteform.html', form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon) 
 
 
-    return render_template('fuelquoteform.html', form=form, article=article, suggestedprice=suggestedprice, due=due) 
+def pricingModule(gallonsrequested, date):
+    FuelPrice = 0
+    Transportation = 0.0
+    Discounts = 0
+    clientratehistory = 0
+    Gallons = gallonsrequested
+    SeasonFluctuation = 0
+    PricePerGallon = 0
+    competitors_avg_price = [1.3090000000000002, 1.3090000000000002, 2.229, 2.229, 2.229, 2.229, 2.229, 2.229, 1.3090000000000002, 1.3090000000000002, 1.3090000000000002, 1.3090000000000002]
+
+    if session['state1'] != 'TX':
+        Transportation += 0.90 * float(gallonsrequested)
+    
+    month = date[0:2:]
+    monthNum = 0
+    if month[0] == '0':
+        monthNum = int(month[1])
+    else:
+        monthNum = int(month)
+    PricePerGallon = competitors_avg_price[monthNum-1]
+    if month == '09' or month == '10' or month == '11' or month == '12' or month == '01' or month == '02':
+        SeasonFluctuation -= 0.15 * float(gallonsrequested)
+
+
+    # Create cursor
+    cur = mysql.connection.cursor()
+
+    # Get article by id
+    result = cur.execute("SELECT * FROM fuelquote WHERE userid = %s" % str(session['userid1']))
+    
+    if result >= 10:
+        clientratehistory -= 0.1 * float(gallonsrequested)
+    elif result >= 5:
+        clientratehistory -= 0.01 * float(gallonsrequested)
+
+    cur.close()
+    
+    profitMargin = 0.1 * float(gallonsrequested)
+
+    FuelPrice = (float(gallonsrequested) * float(PricePerGallon)) + Transportation + profitMargin + (clientratehistory + SeasonFluctuation)
+    
+    return FuelPrice, PricePerGallon, Transportation, clientratehistory, SeasonFluctuation, profitMargin
+
+
 
 
 # Article Form Class
-class ArticleForm(Form):
+class ProfileManager(Form):
     fullname = StringField('Full Name', [validators.Required(), validators.Length(min=1, max=50)])
     address1 = StringField('Address 1', [validators.Required(), validators.Length(min=1, max=100)])
     address2 = StringField('Address 2', [validators.Length(min=0, max=100)])
-    city = StringField('City', [validators.Required()])
-    zipcode = StringField('Zip Code', [validators.Required()])
+    city = StringField('City', [validators.Required(), validators.Length(min=1, max=100)])
+    zipcode = StringField('Zip Code', [validators.Required(), validators.Length(min=5, max=9)])
 
 
 
@@ -243,7 +293,7 @@ def profileManager():
     article = cur.fetchone()
     cur.close()
     # Get form
-    form = ArticleForm(request.form)
+    form = ProfileManager(request.form)
 
     # Populate article form fields
     form.fullname.data = article['fullname']
@@ -251,7 +301,7 @@ def profileManager():
     form.address2.data = article['address2']
     form.city.data = article['city']
     form.zipcode.data = article['zipcode']
-    #state = article['state']
+    session['state1'] = article['state']
     # Validate profile form and update 
     if request.method == 'POST':
         fname = request.form['fullname']
@@ -268,6 +318,7 @@ def profileManager():
             flash('City needs to be between 1 and 100 characters', 'danger')
             return render_template('profilemanager.html', form=form, article=article)
         st = request.form.get('state')
+        session['state1'] = st
         zp = request.form['zipcode']
         if LengthError(zp, 5, 9):
             flash('Zip Code needs to be between 5 and 9 characters', 'danger')

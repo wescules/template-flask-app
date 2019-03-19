@@ -1,8 +1,7 @@
 from app import app        # The code to test
-import unittest   # The test framework
-from app import deleteUser
+import unittest            # The test framework
 
-class Test_TestIncrementDecrement(unittest.TestCase):
+class Test_TestApp(unittest.TestCase):
     #*****************************
     #        Setup
     #*****************************
@@ -54,14 +53,17 @@ class Test_TestIncrementDecrement(unittest.TestCase):
         rv = self.update_user_info("Wescules Andraddy", "124 Streeet St.", "", "Sugar Land", "902342348243", "TX")
         assert b'Zip Code needs to be between 5 and 9 characters' in rv.data
 
-    def test_check_numeric_gallons_requested(self):
+    def test_fail_check_numeric_gallons_requested(self):
         rv = self.fuel_quote_form_inputs("lmao", "03/09/2019")
         assert b'Gallons Requested needs to be a numeric value' in rv.data
 
     def test_fuel_quote_form(self):
+        rv = self.update_user_info("Wescules Andraddy", "124 Streeet St.", "", "Sugar Land", "908243", "TX")
         rv = self.fuel_quote_form_inputs("1236", "03/09/2019")
         assert b'1236' in rv.data
         assert b'03/09/2019' in rv.data
+        assert b'2755.044' in rv.data
+        assert b'123.6' in rv.data
         delete = self.app.get('/deletehistory', content_type="html/text")
 
     def test_fuel_history(self):
