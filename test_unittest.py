@@ -1,5 +1,6 @@
 from app import app        # The code to test
 import unittest            # The test framework
+from werkzeug.datastructures import CombinedMultiDict, ImmutableMultiDict
 
 class Test_TestApp(unittest.TestCase):
     #*****************************
@@ -60,10 +61,9 @@ class Test_TestApp(unittest.TestCase):
     def test_fuel_quote_form(self):
         rv = self.update_user_info("Wescules Andraddy", "124 Streeet St.", "", "Sugar Land", "908243", "TX")
         rv = self.fuel_quote_form_inputs("1236", "03/09/2019")
-        assert b'1236' in rv.data
+        assert b'1.755' in rv.data
         assert b'03/09/2019' in rv.data
-        assert b'2755.044' in rv.data
-        assert b'123.6' in rv.data
+        assert b'$ 2169.18' in rv.data
         delete = self.app.get('/deletehistory', content_type="html/text")
 
     def test_fuel_history(self):
@@ -91,9 +91,14 @@ class Test_TestApp(unittest.TestCase):
         return self.app.post('/profile', data=dict(fullname=fname, address1=add1, address2=add2, city=city, zipcode=zipp, state=state))
 
     def fuel_quote_form_inputs(self, gallonsrequested, dt):
+        self.change_price_to_150()
         self.login("lmao", "lmao")
-        return self.app.post('/quotes', data=dict(gallons_requested=gallonsrequested, dt=dt))
-
+        imp = CombinedMultiDict([ImmutableMultiDict([]), ImmutableMultiDict([('action', u'SubmitQuote'), ('gallons_requested', gallonsrequested), ('dt', dt)])])
+        return self.app.post('/quotes', data=imp, follow_redirects=True)
+    
+    def change_price_to_150(self):
+        self.login("okiesokies", "okiesokies")
+        return self.app.post('/companydashboard', data=dict(pricechange=1.50))
     
 
 if __name__ == '__main__':
