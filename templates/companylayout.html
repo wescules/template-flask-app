@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Fuel Price Predictor</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  </head>
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+	<script src="//code.jquery.com/jquery-1.10.2.js"></script>
+	<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+	<script>
+	$(function() {
+		$( ".dtpick" ).datepicker();
+	});
+	</script>
+  <body>
+    {% include 'includes/comanynavbar.html' %}
+    <div class="container">
+      {% include 'includes/_messages.html' %}
+      {% block body %}{% endblock %}
+    </div>
+
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="//cdn.ckeditor.com/4.6.2/basic/ckeditor.js"></script>
+    <script>
+  jQuery(document).ready(function($){
+	//open popup
+	$('.cd-popup-trigger').on('click', function(event){
+		event.preventDefault();
+		$('.cd-popup').addClass('is-visible');
+	});
+	
+	//close popup
+	$('.cd-popup').on('click', function(event){
+		if( $(event.target).is('.cd-popup-close') || $(event.target).is('.cd-popup') ) {
+			event.preventDefault();
+			$(this).removeClass('is-visible');
+		}
+	});
+	//close popup when clicking the esc keyboard button
+	$(document).keyup(function(event){
+    	if(event.which=='27'){
+    		$('.cd-popup').removeClass('is-visible');
+	    }
+    });
+});
+</script>
+    <script type="text/javascript">
+      CKEDITOR.replace('editor')
+    </script>
+  </body>
+</html>

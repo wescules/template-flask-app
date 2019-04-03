@@ -29,7 +29,6 @@ def index():
 def about():
     return render_template('about.html')
 
-
 # Register Form Class
 class RegisterForm(Form):
     username = StringField('Username', [validators.Length(min=4, max=25)])
@@ -47,7 +46,7 @@ def register():
     if request.method == 'POST' and form.validate():
         username = form.username.data
         password = sha256_crypt.encrypt(str(form.password.data))
-
+        privelege = request.form.get('priv') 
         # Create cursor
         cur = mysql.connection.cursor()
 
@@ -58,7 +57,7 @@ def register():
             flash('Username is already in use', 'danger')
             return redirect(url_for('register'))
         # Execute query
-        cur.execute("INSERT INTO users(username, password) VALUES(%s, %s)", (username, password))
+        cur.execute("INSERT INTO users(username, password, type) VALUES(%s, %s, %s)", (username, password, privelege))
 
         # Commit to DB
         mysql.connection.commit()
@@ -97,9 +96,10 @@ def login():
                 session['logged_in'] = True
                 session['username'] = username
                 session['userid1'] = data['id']
+                session['type'] = data['type']
 
                 flash('You are now logged in', 'success')
-                return redirect(url_for('about'))
+                return redirect(url_for('about')) if data['type'] == 0 else redirect(url_for('companydashboard'))
             else:
                 error = 'Invalid login'
                 return render_template('login.html', error=error)
@@ -152,7 +152,36 @@ def dashboard():
     # Close connection
     cur.close()
 
- 
+class ChangePriceForm(Form):
+    pricechange = IntegerField('Change Price: ', [validators.NumberRange(min=1, max=10000)])
+
+# About
+@app.route('/companydashboard', methods=['GET', 'POST'])
+def companydashboard():
+    form = ChangePriceForm(request.form)
+
+    # Create cursors
+    cur = mysql.connection.cursor()
+    result = cur.execute("select * from currentPrice;")
+    article = cur.fetchone()
+    form.pricechange.data = article['price']
+    # Get quotes
+    result = cur.execute(" select users.fullname,fuelquote.gallonsrequested, fuelquote.amountdue, fuelquote.date from users right join fuelquote on users.id=fuelquote.userid where fullname is not null;")
+    
+    articles = cur.fetchall()
+    if request.method == 'POST':
+        price = request.form['pricechange']
+        result = cur.execute("update currentPrice set price=%s where id=1" %  (price))
+        # Commit to DB
+        mysql.connection.commit()
+        #Close connection
+        cur.close()
+        flash("Price Updated", "success")
+        return render_template('companydashboard.html', form=form, articles=articles)
+        
+    return render_template('companydashboard.html', form=form, articles=articles)
+
+
 @app.route('/deleteuser', methods=['GET'])
 def deleteUser():
     cur = mysql.connection.cursor()
@@ -174,7 +203,7 @@ class FuelForm(Form):
     dt = DateField('Delivery Date',[validators.Required()], format="%m/%d/%Y")
 
 # Fuel quotes
-@app.route('/quotes', methods=['GET', 'POST'])
+@app.route('/quotes', methods=['GET', 'POST', 'PUT'])
 @is_logged_in
 def quotes():
     form = FuelForm(request.form)
@@ -195,74 +224,74 @@ def quotes():
     FuelPrice=0
     gallonsrequested=0
     ppgalon =0
+    GallonsRequestedFactor=0
+    SuggestedPrice=0
+
     if request.method == 'POST':
         gallonsrequested = request.form['gallons_requested']
         if not gallonsrequested.isdigit():
             flash('Gallons Requested needs to be a numeric value', 'danger')
-            return render_template('fuelquoteform.html', form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon) 
+            return render_template('fuelquoteform.html',SuggestedPrice=SuggestedPrice, form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon, GallonsRequestedFactor=GallonsRequestedFactor) 
 
         dt = request.form['dt']
         date = datetime.datetime.strptime(dt, '%m/%d/%Y').strftime('%Y/%m/%d')
-        FuelPrice, PricePerGallon, Transportation, clientratehistory, SeasonFluctuation, profitMargin = pricingModule(gallonsrequested, dt)
+        FuelPrice, PricePerGallon, Transportation, clientratehistory, SeasonFluctuation, profitMargin, GallonsRequestedFactor,SuggestedPrice = pricingModule(gallonsrequested, dt)
         ppgalon = float(gallonsrequested) * float(PricePerGallon)
-        # Create Cursor
-        cur = mysql.connection.cursor()
+        if request.form['action'] == 'SubmitQuote':
+            # Create Cursor
+            cur = mysql.connection.cursor()
 
-        cur.execute ("insert into fuelquote(userid, gallonsrequested, suggestedprice, amountdue, date) values(%s, %s, %s, %s, %s);",(str(session['userid1']), gallonsrequested, PricePerGallon, FuelPrice, date))
+            cur.execute ("insert into fuelquote(userid, gallonsrequested, suggestedprice, amountdue, date) values(%s, %s, %s, %s, %s);",(str(session['userid1']), gallonsrequested, SuggestedPrice, FuelPrice, date))
+            # Commit to DB
+            mysql.connection.commit()
+            flash ("Quote Saved", 'success')
+            #Close connection
+            cur.close()
 
-        # Commit to DB
-        mysql.connection.commit()
+        return render_template('fuelquoteform.html',SuggestedPrice=SuggestedPrice, form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon, GallonsRequestedFactor=GallonsRequestedFactor) 
 
-        #Close connection
-        cur.close()
-
-        return render_template('fuelquoteform.html', form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon) 
-
-    return render_template('fuelquoteform.html', form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon) 
+    return render_template('fuelquoteform.html',SuggestedPrice=SuggestedPrice, form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon, GallonsRequestedFactor=GallonsRequestedFactor) 
 
 
 def pricingModule(gallonsrequested, date):
     FuelPrice = 0
     Transportation = 0.0
-    Discounts = 0
     clientratehistory = 0
-    Gallons = gallonsrequested
     SeasonFluctuation = 0
     PricePerGallon = 0
-    competitors_avg_price = [1.3090000000000002, 1.3090000000000002, 2.229, 2.229, 2.229, 2.229, 2.229, 2.229, 1.3090000000000002, 1.3090000000000002, 1.3090000000000002, 1.3090000000000002]
-
-    if session['state1'] != 'TX':
-        Transportation += 0.90 * float(gallonsrequested)
-    
-    month = date[0:2:]
-    monthNum = 0
-    if month[0] == '0':
-        monthNum = int(month[1])
-    else:
-        monthNum = int(month)
-    PricePerGallon = competitors_avg_price[monthNum-1]
-    if month == '09' or month == '10' or month == '11' or month == '12' or month == '01' or month == '02':
-        SeasonFluctuation -= 0.15 * float(gallonsrequested)
-
 
     # Create cursor
     cur = mysql.connection.cursor()
 
+    result = cur.execute("SELECT * FROM users where id=%s" % str(session['userid1']))
+    article = cur.fetchone()
+    Transportation = 0.02 if article['state'] == 'TX' else 0.04
+
+
+    result = cur.execute("SELECT * FROM currentPrice;")
+
+    article = cur.fetchone()
+    PricePerGallon = article['price']
+
+    month = date[0:2:]
+    SeasonFluctuation = 0.03 if month == '09' or month == '10' or month == '11' or month == '12' or month == '01' or month == '02' else 0.04
+    
     # Get article by id
     result = cur.execute("SELECT * FROM fuelquote WHERE userid = %s" % str(session['userid1']))
     
-    if result >= 10:
-        clientratehistory -= 0.1 * float(gallonsrequested)
-    elif result >= 5:
-        clientratehistory -= 0.01 * float(gallonsrequested)
+    clientratehistory = 0.01 if result >= 1 else 0.0
 
     cur.close()
     
-    profitMargin = 0.1 * float(gallonsrequested)
+    profitMargin = 0.10
 
-    FuelPrice = (float(gallonsrequested) * float(PricePerGallon)) + Transportation + profitMargin + (clientratehistory + SeasonFluctuation)
+    GallonsRequestedFactor = 0.02 if gallonsrequested > 1000 else 0.03
+
+    SuggestedPrice = PricePerGallon + (Transportation - clientratehistory + GallonsRequestedFactor + profitMargin + SeasonFluctuation) * PricePerGallon
+
+    FuelPrice = float(gallonsrequested) * float(SuggestedPrice)
     
-    return FuelPrice, PricePerGallon, Transportation, clientratehistory, SeasonFluctuation, profitMargin
+    return FuelPrice, PricePerGallon, Transportation, clientratehistory, SeasonFluctuation, profitMargin, GallonsRequestedFactor, SuggestedPrice
 
 
 
@@ -280,7 +309,7 @@ class ProfileManager(Form):
 def LengthError(string, minimum, maximum):
     return len(string) < minimum or len(string) > maximum
 
-# Edit Article
+# Edit Profile
 @app.route('/profile', methods=['GET', 'POST'])
 @is_logged_in
 def profileManager():

@@ -14,58 +14,29 @@
       {{ article.address1 }}
       <br></br>
     </div>
-    <div class="input-field col s6">
+    <div class="input-field col s6" autocomplete="off">
       <strong>
           Delivery Date:
       </strong>
         {{ form.dt(class="dtpick") }}
       </div>
       <br></br>
-    <div class="form-group">
+    <div class="form-group" title="Current Price + (Current Price * (Location Factor - Rate History Factor + Gallons Requested Factor + Company Profit Factor + Rate Fluctuation))">
         <strong>
-          <p align="right">Price Per Gallon:
-        </strong>
-        {{ PricePerGallon }} * {{ gallonsrequested }} = <font color="red">{{ ppgalon }}</font></p>
+          <p align="right">Suggested Price (hover for equation):
+        </strong> 
+         = {{ PricePerGallon }}  + ( {{ PricePerGallon }} *  ({{ Transportation }} - {{ clientratehistory }} + {{ GallonsRequestedFactor }} + 0.1 + {{ SeasonFluctuation }}))       
+        {{ PricePerGallon }} * {{ gallonsrequested }} = <font color="red">$ {{ SuggestedPrice }}</font></p>
     </div>
-    <div class="form-group">
-        <strong>
-          <p align="right"> Profit Margin: 
-        </strong>
-           0.1 * {{ gallonsrequested }} = <font color="red">{{ profitMargin }}</font></p>
-      </div>
-      <div class="form-group">
-        <strong>
-          <p align="right">Transportation: 
-        </strong>
-        {% if Transportation == 0.0 %}
-          0.9 * {{ gallonsrequested }}  = <font color="red">0</font>
-
-        {% else %}
-          0.9 * {{ gallonsrequested }}  = <font color="red">{{ Transportation }}</font>
-        {% endif %}
-      </p>
-      </div>
-      <div class="form-group">
-        <strong>
-          <p align="right">Client Discount (5 purchases or more only 1%-10%): 
-        </strong>
-        <font color="green">{{ clientratehistory }}</font>
-      </p>
-      </div>
-      <div class="form-group">
-        <strong>
-          <p align="right">Seasonal Discount: 
-        </strong>
-        <font color="green">{{ SeasonFluctuation }}</font>
-      </p>
-      </div>
       <div class="form-group">
         <strong>
           <p align="right">Total Amount Due: 
         </strong>
-          {{ FuelPrice }}
+        {{ gallonsrequested }} * {{ SuggestedPrice }} = 
+        <font color="red">$ {{ FuelPrice }}</font>
       </p>
     </div>
-    <p><input class="btn btn-primary" type="submit" value="Submit">
+    <p align="right"><input class="btn btn-primary" type="submit" value="GetPrice" name="action">
+    <input class="btn btn-primary" type="submit" value="SubmitQuote" name="action">
   </form>
 {% endblock %}
