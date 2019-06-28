@@ -2,21 +2,11 @@
 
 {% block body %}
   <h1>About Us</h1>
-    <p>A partner of your company has requested to build a software application that will predict the
-      rate of the fuel based on the following criteria:</p>
-      <br></br>
-    - Client Location<br></br>
-    - Competitors rate<br></br>
-    - Client rate history<br></br>
-    - Client rate history<br></br>
-    - Gallons requested<br></br>
-    - Company profit margin (%)<br></br>
-    - Seasonal rate fluctuation (%)<br></br>
+  <p>You have been asked to build an admin portal that will allow your company internal employees to access the portal and perform admin functions on behalf of company clients.<br></br>
+    Here are additional details:
     <br></br>
-    Software must include following components:<br></br>
-    - Login (Allow Cleint to register if not a client yet)<br></br>
-    - Cleint Registration (Initially only username and Password)<br></br>
-    - Client Profile Management (After client registers they should login first to complete profile)<br></br>
-    - Fuel Quote Form with Pricing module (Once user enters all required information pricing module predicts the rate)<br></br>
-    - Fuel Quote History<br></br>
+    (a) Application is accessible only on company network. <br></br>
+    (b) Access to the links is role based i.e. only authenticated internal admins are able to access the portal and what links you can access once on the portal is determined based on what roles you have. So, same link will not be visible to other admin who doesn't have appropriate role to access the link.<br></br>
+    (c) There are some global links that are available to all admins.<br></br>
+    (d) The links redirect users to the admin application that is not developed by you.</p>
 {% endblock %}

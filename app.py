@@ -1,10 +1,9 @@
 from flask import Flask, render_template, flash, redirect, url_for, session, request, logging
-from flask_wtf import Form, FlaskForm
+#from data import Articles
 from flask_mysqldb import MySQL
-from wtforms import Form, StringField, TextAreaField, PasswordField, validators, DateField, IntegerField
+from wtforms import Form, StringField, TextAreaField, PasswordField, validators
 from passlib.hash import sha256_crypt
 from functools import wraps
-import datetime
 
 app = Flask(__name__)
 
@@ -17,6 +16,7 @@ app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 # init MYSQL
 mysql = MySQL(app)
 
+#Articles = Articles()
 
 # Index
 @app.route('/')
@@ -28,6 +28,7 @@ def index():
 @app.route('/about')
 def about():
     return render_template('about.html')
+
 
 # Register Form Class
 class RegisterForm(Form):
@@ -46,18 +47,12 @@ def register():
     if request.method == 'POST' and form.validate():
         username = form.username.data
         password = sha256_crypt.encrypt(str(form.password.data))
-        privelege = request.form.get('priv') 
+        
         # Create cursor
         cur = mysql.connection.cursor()
 
-        # Get user by username
-        result = cur.execute("SELECT * FROM users WHERE username = %s", [username])
-
-        if result > 0:
-            flash('Username is already in use', 'danger')
-            return redirect(url_for('register'))
         # Execute query
-        cur.execute("INSERT INTO users(username, password, type) VALUES(%s, %s, %s)", (username, password, privelege))
+        cur.execute("INSERT INTO users(name, email, username, password, privilege) VALUES(%s, %s, %s, %s, %s)", ("user", "email", username, password, 1))
 
         # Commit to DB
         mysql.connection.commit()
@@ -95,11 +90,11 @@ def login():
                 # Passed
                 session['logged_in'] = True
                 session['username'] = username
+                session['privilege'] = data['privilege']
                 session['userid1'] = data['id']
-                session['type'] = data['type']
 
                 flash('You are now logged in', 'success')
-                return redirect(url_for('about')) if data['type'] == 0 else redirect(url_for('companydashboard'))
+                return redirect(url_for('dashboard'))
             else:
                 error = 'Invalid login'
                 return render_template('login.html', error=error)
@@ -122,7 +117,7 @@ def is_logged_in(f):
             return redirect(url_for('login'))
     return wrap
 
-# Logout
+# Logout    
 @app.route('/logout')
 @is_logged_in
 def logout():
@@ -131,232 +126,85 @@ def logout():
     return redirect(url_for('login'))
 
 
-# Quote History
-@app.route('/history', methods=['GET'])
+
+# Dashboard
+@app.route('/dashboard')
 @is_logged_in
 def dashboard():
     # Create cursors
     cur = mysql.connection.cursor()
 
-    # Get quotes
-    result = cur.execute("select * from fuelquote where userid = %s" % str(session['userid1']))
+    # Get articles
+    result = cur.execute("select * from records")
     
     articles = cur.fetchall()
 
+    result = cur.execute("SELECT category,COUNT(*) as count FROM records GROUP BY category ORDER BY count DESC")
+    
+    graphs = cur.fetchall()
+
+    colors = [
+    "#F7464A", "#46BFBD", "#FDB45C", "#FEDCBA",
+    "#ABCDEF", "#DDDDDD", "#ABCABC", "#4169E1",
+    "#C71585", "#FF4500", "#FEDCBA", "#46BFBD"]
+
     if result > 0:
-        return render_template('dashboard.html', articles=articles)
+        return render_template('dashboard.html', articles=articles, max = 800, graphs = graphs, colors = colors)
     else:
         msg = 'No Articles Found'
         return render_template('dashboard.html', msg=msg)
 
+
     # Close connection
     cur.close()
 
-class ChangePriceForm(Form):
-    pricechange = IntegerField('Change Price: ', [validators.NumberRange(min=1, max=10000)])
+@app.route('/uploads/<path:filename>', methods=['GET', 'POST'])
+def download(filename):
+    return send_from_directory(directory=os.getcwd()+"/files", filename="filename.png")
 
-# About
-@app.route('/companydashboard', methods=['GET', 'POST'])
-def companydashboard():
-    form = ChangePriceForm(request.form)
 
+# Statistics
+@app.route('/statistics')
+@is_logged_in
+def statistics():
     # Create cursors
     cur = mysql.connection.cursor()
-    result = cur.execute("select * from currentPrice;")
-    article = cur.fetchone()
-    form.pricechange.data = article['price']
-    # Get quotes
-    result = cur.execute(" select users.fullname,fuelquote.gallonsrequested, fuelquote.amountdue, fuelquote.date from users right join fuelquote on users.id=fuelquote.userid where fullname is not null;")
+
+    # Get articles
+    result = cur.execute("SELECT category,COUNT(*) as count FROM records GROUP BY category ORDER BY count DESC")
     
     articles = cur.fetchall()
-    if request.method == 'POST':
-        price = request.form['pricechange']
-        result = cur.execute("update currentPrice set price=%s where id=1" %  (price))
-        # Commit to DB
-        mysql.connection.commit()
-        #Close connection
-        cur.close()
-        flash("Price Updated", "success")
-        return render_template('companydashboard.html', form=form, articles=articles)
-        
-    return render_template('companydashboard.html', form=form, articles=articles)
+
+    if result > 0:
+        return render_template('statistics.html', articles=articles, max=2000)
 
 
-@app.route('/deleteuser', methods=['GET'])
-def deleteUser():
-    cur = mysql.connection.cursor()
-    cur.execute("delete from users where username='hiepLy'")
-    mysql.connection.commit()
+    else:
+        msg = 'No Articles Found'
+        return render_template('statistics.html', msg=msg)
+
+
+    # Close connection
     cur.close()
-    return redirect(url_for('register'))
-
-@app.route('/deletehistory', methods=['GET'])
-def deleteHistory():
-    cur = mysql.connection.cursor()
-    cur.execute("delete from fuelquote where gallonsrequested=1236")
-    mysql.connection.commit()
-    cur.close()
-    return redirect(url_for('quotes'))
-
-class FuelForm(Form):
-    gallons_requested = IntegerField('Gallons Requested: ', [validators.NumberRange(min=1, max=10000), validators.Required()])
-    dt = DateField('Delivery Date',[validators.Required()], format="%m/%d/%Y")
-
-# Fuel quotes
-@app.route('/quotes', methods=['GET', 'POST', 'PUT'])
-@is_logged_in
-def quotes():
-    form = FuelForm(request.form)
-
-    # Create cursor
-    cur = mysql.connection.cursor()
-
-    # Get article by id
-    result = cur.execute("SELECT * FROM users WHERE id = %s" % str(session['userid1']))
-
-    article = cur.fetchone()
-    cur.close()
-    PricePerGallon=0
-    Transportation=0
-    clientratehistory=0
-    SeasonFluctuation=0
-    profitMargin=0
-    FuelPrice=0
-    gallonsrequested=0
-    ppgalon =0
-    GallonsRequestedFactor=0
-    SuggestedPrice=0
-
-    if request.method == 'POST':
-        gallonsrequested = request.form['gallons_requested']
-        if not gallonsrequested.isdigit():
-            flash('Gallons Requested needs to be a numeric value', 'danger')
-            return render_template('fuelquoteform.html',SuggestedPrice=SuggestedPrice, form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon, GallonsRequestedFactor=GallonsRequestedFactor) 
-
-        dt = request.form['dt']
-        date = datetime.datetime.strptime(dt, '%m/%d/%Y').strftime('%Y/%m/%d')
-        FuelPrice, PricePerGallon, Transportation, clientratehistory, SeasonFluctuation, profitMargin, GallonsRequestedFactor,SuggestedPrice = pricingModule(gallonsrequested, dt)
-        ppgalon = float(gallonsrequested) * float(PricePerGallon)
-        if request.form['action'] == 'SubmitQuote':
-            # Create Cursor
-            cur = mysql.connection.cursor()
-
-            cur.execute ("insert into fuelquote(userid, gallonsrequested, suggestedprice, amountdue, date) values(%s, %s, %s, %s, %s);",(str(session['userid1']), gallonsrequested, SuggestedPrice, FuelPrice, date))
-            # Commit to DB
-            mysql.connection.commit()
-            flash ("Quote Saved", 'success')
-            #Close connection
-            cur.close()
-
-        return render_template('fuelquoteform.html',SuggestedPrice=SuggestedPrice, form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon, GallonsRequestedFactor=GallonsRequestedFactor) 
-
-    return render_template('fuelquoteform.html',SuggestedPrice=SuggestedPrice, form=form,Transportation=Transportation, article=article, PricePerGallon=PricePerGallon, FuelPrice=FuelPrice, profitMargin=profitMargin, SeasonFluctuation=SeasonFluctuation, clientratehistory=clientratehistory, gallonsrequested=gallonsrequested, ppgalon=ppgalon, GallonsRequestedFactor=GallonsRequestedFactor) 
-
-
-def pricingModule(gallonsrequested, date):
-    FuelPrice = 0
-    Transportation = 0.0
-    clientratehistory = 0
-    SeasonFluctuation = 0
-    PricePerGallon = 0
-
-    # Create cursor
-    cur = mysql.connection.cursor()
-
-    result = cur.execute("SELECT * FROM users where id=%s" % str(session['userid1']))
-    article = cur.fetchone()
-    Transportation = 0.02 if article['state'] == 'TX' else 0.04
-
-
-    result = cur.execute("SELECT * FROM currentPrice;")
-
-    article = cur.fetchone()
-    PricePerGallon = article['price']
-
-    month = date[0:2:]
-    SeasonFluctuation = 0.03 if month == '09' or month == '10' or month == '11' or month == '12' or month == '01' or month == '02' else 0.04
-    
-    # Get article by id
-    result = cur.execute("SELECT * FROM fuelquote WHERE userid = %s" % str(session['userid1']))
-    
-    clientratehistory = 0.01 if result >= 1 else 0.0
-
-    cur.close()
-    
-    profitMargin = 0.10
-
-    GallonsRequestedFactor = 0.02 if gallonsrequested > 1000 else 0.03
-
-    SuggestedPrice = PricePerGallon + (Transportation - clientratehistory + GallonsRequestedFactor + profitMargin + SeasonFluctuation) * PricePerGallon
-
-    FuelPrice = float(gallonsrequested) * float(SuggestedPrice)
-    
-    return FuelPrice, PricePerGallon, Transportation, clientratehistory, SeasonFluctuation, profitMargin, GallonsRequestedFactor, SuggestedPrice
-
-
-
-
 # Article Form Class
-class ProfileManager(Form):
-    fullname = StringField('Full Name', [validators.Required(), validators.Length(min=1, max=50)])
-    address1 = StringField('Address 1', [validators.Required(), validators.Length(min=1, max=100)])
-    address2 = StringField('Address 2', [validators.Length(min=0, max=100)])
-    city = StringField('City', [validators.Required(), validators.Length(min=1, max=100)])
-    zipcode = StringField('Zip Code', [validators.Required(), validators.Length(min=5, max=9)])
+class ArticleForm(Form):
+    title = StringField('Title', [validators.Length(min=1, max=200)])
+    body = TextAreaField('Body', [validators.Length(min=30)])
 
-
-
-def LengthError(string, minimum, maximum):
-    return len(string) < minimum or len(string) > maximum
-
-# Edit Profile
-@app.route('/profile', methods=['GET', 'POST'])
+# Add Article
+@app.route('/add_article', methods=['GET', 'POST'])
 @is_logged_in
-def profileManager():
-    # Create cursor
-    cur = mysql.connection.cursor()
-
-    # Get article by id
-    result = cur.execute("SELECT * FROM users WHERE id = %s" % str(session['userid1']))
-
-    article = cur.fetchone()
-    cur.close()
-    # Get form
-    form = ProfileManager(request.form)
-
-    # Populate article form fields
-    form.fullname.data = article['fullname']
-    form.address1.data = article['address1']
-    form.address2.data = article['address2']
-    form.city.data = article['city']
-    form.zipcode.data = article['zipcode']
-    session['state1'] = article['state']
-    # Validate profile form and update 
-    if request.method == 'POST':
-        fname = request.form['fullname']
-        if LengthError(fname, 1, 50):
-            flash('Full Name needs to be between 1 and 50 characters', 'danger')
-            return render_template('profilemanager.html', form=form, article=article)
-        add1 = request.form['address1']
-        if LengthError(add1, 1, 100):
-            flash('Address 1 needs to be between 1 and 100 characters', 'danger')
-            return render_template('profilemanager.html', form=form, article=article)
-        add2 = request.form['address2']
-        cty = request.form['city']
-        if LengthError(cty, 1, 100):
-            flash('City needs to be between 1 and 100 characters', 'danger')
-            return render_template('profilemanager.html', form=form, article=article)
-        st = request.form.get('state')
-        session['state1'] = st
-        zp = request.form['zipcode']
-        if LengthError(zp, 5, 9):
-            flash('Zip Code needs to be between 5 and 9 characters', 'danger')
-            return render_template('profilemanager.html', form=form, article=article)
+def add_article():
+    form = ArticleForm(request.form)
+    if request.method == 'POST' and form.validate():
+        title = form.title.data
+        body = form.body.data
 
         # Create Cursor
         cur = mysql.connection.cursor()
 
-        cur.execute ("UPDATE users SET fullname=%s, address1=%s, address2=%s, city=%s, state=%s, zipcode=%s WHERE id=%s",(fname, add1, add2,cty, st,zp,  str(session['userid1'])))
+        # Execute
+        cur.execute("INSERT INTO articles(title, body, author, priv) VALUES(%s, %s, %s, %s)",(title, body, session['username'], 0))
 
         # Commit to DB
         mysql.connection.commit()
@@ -364,14 +212,99 @@ def profileManager():
         #Close connection
         cur.close()
 
-        flash('User Updated', 'success')
+        flash('Article Created', 'success')
 
-        return redirect(url_for('profileManager'))
+        return redirect(url_for('dashboard'))
+
+    return render_template('add_article.html', form=form)
 
 
-    return render_template('profilemanager.html', form=form, article=article)
+# Add Admin Article
+@app.route('/add_admin_article', methods=['GET', 'POST'])
+@is_logged_in
+def add_admin_article():
+    form = ArticleForm(request.form)
+    if request.method == 'POST' and form.validate():
+        title = form.title.data
+        body = form.body.data
+
+        # Create Cursor
+        cur = mysql.connection.cursor()
+
+        # Execute
+        cur.execute("INSERT INTO articles(title, body, author, priv) VALUES(%s, %s, %s, %s)",(title, body, session['username'], 1))
+
+        # Commit to DB
+        mysql.connection.commit()
+
+        #Close connection
+        cur.close()
+
+        flash('Article Created', 'success')
+
+        return redirect(url_for('dashboard'))
+
+    return render_template('add_admin_article.html', form=form)
+
+
+# Edit Article
+@app.route('/view_reciept/<string:id>', methods=['GET', 'POST'])
+@is_logged_in
+def view_reciept(id):
+    # Create cursor
+    cur = mysql.connection.cursor()
+
+    # Get article by id
+    result = cur.execute("SELECT * FROM items WHERE recieptID = %s", [id])
+
+    articles = cur.fetchall()
+
+    result = cur.execute("select sum(price) as sumprice from items where recieptID= %s", [id])
+    total = cur.fetchone()
+
+    cur.close()
+    # Get form
+    form = ArticleForm(request.form)
+
+    return render_template('view_reciept.html', articles=articles, total=total)
+
+# Delete Article
+@app.route('/delete_article/<string:id>', methods=['POST'])
+@is_logged_in
+def delete_article(id):
+    # Create cursor
+    cur = mysql.connection.cursor()
+
+    # Execute
+    cur.execute("DELETE FROM articles WHERE id = %s", [id])
+
+    # Commit to DB
+    mysql.connection.commit()
+
+    #Close connection
+    cur.close()
+
+    flash('Article Deleted', 'success')
+
+    return redirect(url_for('dashboard'))
+
+
+
 
 
 if __name__ == '__main__':
     app.secret_key='secret123'
     app.run(debug=True)
+    
+#sudo apt-get install mysql-server
+#apt-get install python-dev
+#sudo apt-get install libmysqlclient-dev
+#pip install flask_mysqldb
+#pip install wtforms
+#pip install passlib
+
+###################
+#***create database***(set password to 'root')
+# mysql -u root -p
+# create database myflaskapp;
+# mysql -u root -proot myflaskapp < admin_backup.sql

@@ -1,24 +1,119 @@
 {% extends 'layout.html' %}
 
 {% block body %}
-<h1>Your Fuel Quote History:</h1>
-  <br></br>
-<table class="table table-striped">
+<!-- if user is  an admin -->
+    <h1> V-eReciept<small> Welcome, {{session.username}}</small></h1>
+    <hr>
+    <p><strong></strong></p>
+    <table id="example" class="table table-striped">
     <tr>
-      <th>Gallons Requested</th>
-      <th>Suggested Price/Gallon</th>
-      <th>Amount Due</th>
-      <th>Date</th>
+      <th style="font-size: 15px">Date</th>
+      <th style="font-size: 15px">Merchant</th>
+      <th style="font-size: 15px">Amount</th>
+      <th style="font-size: 15px">Category</th>
       <th></th>
       <th></th>
     </tr>
     {% for article in articles %}
       <tr>
-          <td>{{article.gallonsrequested}}</td>
-          <td>{{article.suggestedprice}}</td>
-          <td>{{article.amountdue}}</td>
-          <td>{{article.date}}</td>
+        <td style="font-size: 16px">{{article.date}}</td> 
+        <td style="font-size: 16px">{{article.merchantName}}</td>
+        <td style="font-size: 16px">{{article.amount}}</td>
+        <td style="font-size: 16px">{{article.category}}</td>
+        <td><a href="view_reciept/{{article.id}}" style="background-color:#192061;color:white" class="btn btn-default pull-right">View</a></td>
+        <td>
+          <form  action="{{url_for('delete_article', id=article.id)}}" method="post">
+            <input type="hidden" name="_method" value="DELETE">
+            <input style="background-color:#f7b600; color:black" type="submit" value="Delete" class="btn btn-danger">
+          </form>
+        </td>
       </tr>
     {% endfor %}
-</table>
+    </table>
+    <div style="width: 20%; float:left">
+
+<canvas id="chart" width="600" height="400"></canvas>
+</div>
+    <script>
+    var colors = [
+    "#F7464A", "#46BFBD", "#FDB45C", "#FEDCBA",
+    "#ABCDEF", "#DDDDDD", "#ABCABC", "#4169E1",
+    "#C71585", "#FF4500", "#FEDCBA", "#46BFBD"]
+    var i = 0;
+      var pieData = [
+        {% for art in graphs %}
+          {
+            value: {{art.count}},
+            label: "{{art.category}}",
+            color : colors[i++]
+          },
+        {% endfor %}
+      ];
+      // get bar chart canvas
+      var mychart = document.getElementById("chart").getContext("2d");
+      steps = 10
+      max = {{ max }}
+      // draw pie chart
+      new Chart(document.getElementById("chart").getContext("2d")).Pie(pieData);
+    </script>
+    <div style="width: 50%; float:right; padding-top: 50px">
+    <table id="example1" class="table table-striped" align = "right">
+    {% for article in graphs %}
+      <tr>
+        <td style= "background-color:{{colors[loop.index0]}};"></td>
+        <td>{{article.category}}</td>
+      </tr>
+    {% endfor %}
+    </table>
+    </div>
+  
+
+
+    <div style="width: 100%;position: relative; padding-top: 450px;margin: auto; width: 50%;">
+   <canvas id="linegraph" width="600" height="400"></canvas>
+   </div>
+    <script>
+      // bar chart data
+      var barData = {
+        labels : [
+          "JAN","FEB","MAR","APR","MAY","JUN"
+        ],
+        datasets : [{
+          fillColor: "rgba(151,187,205,0.2)",
+          strokeColor: "rgba(151,187,205,1)",
+          pointColor: "rgba(151,187,205,1)",
+          pointStrokeColor: "#fff",
+          pointHighlightFill: "#fff",
+          pointHighlightStroke: "rgba(151,187,205,1)",
+          bezierCurve : false,
+          data : [173.23,230.43,340.23,142.23,50.20,600.23]
+          }
+	]
+      }
+      Chart.defaults.global.animationSteps = 50;
+      Chart.defaults.global.tooltipYPadding = 16;
+      Chart.defaults.global.tooltipCornerRadius = 0;
+      Chart.defaults.global.tooltipTitleFontStyle = "normal";
+      Chart.defaults.global.tooltipFillColor = "rgba(0,0,0,0.8)";
+      Chart.defaults.global.animationEasing = "easeOutBounce";
+      Chart.defaults.global.responsive = false;
+      Chart.defaults.global.scaleLineColor = "black";
+      Chart.defaults.global.scaleFontSize = 16;
+      // get bar chart canvas
+      var mychart = document.getElementById("linegraph").getContext("2d");
+      steps = 10
+      max = {{ max }}
+      // draw bar chart
+      var LineChartDemo = new Chart(mychart).Line(barData, {
+        scaleOverride: true,
+        scaleSteps: steps,
+        scaleStepWidth: Math.ceil(max / steps),
+        scaleStartValue: 0,
+        scaleShowVerticalLines: true,
+        scaleShowGridLines : true,
+        barShowStroke : true,
+        scaleShowLabels: true,
+        bezierCurve: false,
+      });
+    </script>
 {% endblock %}
